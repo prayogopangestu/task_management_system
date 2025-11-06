@@ -10,9 +10,10 @@
 *.out
 
 # ==== GO MOD ====
-/.go.sum
-/go.sum
+go.sum
+go.mod
 
+# ==== ENV FILES ====
 .env
 .env.local
 .env.*.local
