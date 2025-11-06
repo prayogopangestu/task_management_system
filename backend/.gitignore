@@ -1,0 +1,20 @@
+/bin/
+/pkg/
+/tmp/
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+
+# ==== GO MOD ====
+/.go.sum
+/go.sum
+
+.env
+.env.local
+.env.*.local
+.env.production
+.env.example
