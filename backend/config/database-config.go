@@ -53,7 +53,8 @@ func (server *Server) InitMigrate() {
 
 	// Auto migrate models
 	server.DB.AutoMigrate(
-		&models.Account{},
+		// &models.Account{},
+		&models.Task{},
 	)
 
 }

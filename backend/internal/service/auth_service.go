@@ -53,7 +53,7 @@ func (s *authService) Login(ctx context.Context, req dto.LoginRequest) (*dto.Aut
 	}
 
 	// Generate JWT token
-	token := s.jwtService.GenerateToken(string(rune(account.ID)), account.Email)
+	token := s.jwtService.GenerateToken(fmt.Sprintf("%d", account.ID), account.Email)
 
 	// Update last login
 	s.accountRepo.UpdateLastLogin(ctx, account.ID)
@@ -99,7 +99,7 @@ func (s *authService) Register(ctx context.Context, req dto.RegisterRequest) (*d
 	}
 
 	// Generate JWT token
-	token := s.jwtService.GenerateToken(string(rune(account.ID)), account.Email)
+	token := s.jwtService.GenerateToken(fmt.Sprintf("%d", account.ID), account.Email)
 
 	// Create response
 	authResponse := &dto.AuthResponse{

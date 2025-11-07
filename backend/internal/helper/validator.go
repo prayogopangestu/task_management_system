@@ -1,6 +1,7 @@
 package helper
 
 import (
+	"github.com/gin-gonic/gin"
 	"github.com/gin-gonic/gin/binding"
 	"github.com/go-playground/validator/v10"
 )
@@ -29,4 +30,17 @@ func validateISO4217(fl validator.FieldLevel) bool {
 func validateAmount(fl validator.FieldLevel) bool {
 	amount := fl.Field().Int()
 	return amount != 0
+}
+
+func GetQueryString(ctx *gin.Context, key string) *string {
+	value := ctx.Query(key)
+	if value == "" {
+		return nil
+	}
+	return &value
+}
+
+func GetQueryStringDefault(ctx *gin.Context, key, defaultValue string) string {
+	value := ctx.DefaultQuery(key, defaultValue)
+	return value
 }

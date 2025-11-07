@@ -46,6 +46,7 @@ func InitializeRoutes() {
 	r.Use(CORSMiddleware())
 
 	api.AuthRoutes(r.Group("/api"), db, jwtService)
+	api.TaskRoutes(r.Group("/api"), db, jwtService)
 
 	port := os.Getenv("APP_PORT")
 	if port == "" {
