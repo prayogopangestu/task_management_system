@@ -1,6 +1,7 @@
 package config
 
 import (
+	"backend/internal/models"
 	"fmt"
 	"log"
 	"os"
@@ -14,7 +15,6 @@ type Server struct {
 	DB *gorm.DB
 }
 
-// SetupDatabaseConnection is creating a new connection to our database
 func (server *Server) SetupDatabaseConnection() *gorm.DB {
 	errEnv := godotenv.Load()
 	if errEnv != nil {
@@ -52,7 +52,9 @@ func (server *Server) InitMigrate() {
 	server.DB.Exec("CREATE EXTENSION IF NOT EXISTS \"uuid-ossp\"")
 
 	// Auto migrate models
-	server.DB.AutoMigrate()
+	server.DB.AutoMigrate(
+		&models.Account{},
+	)
 
 }
 

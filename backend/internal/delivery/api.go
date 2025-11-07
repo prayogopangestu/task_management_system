@@ -4,6 +4,9 @@ import (
 	"os"
 
 	"backend/config"
+	"backend/internal/delivery/api"
+	"backend/internal/repository"
+	"backend/internal/service"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
@@ -12,7 +15,10 @@ import (
 var server = config.Server{}
 
 var (
-	db *gorm.DB = server.SetupDatabaseConnection()
+	db                *gorm.DB                     = server.SetupDatabaseConnection()
+	jwtService        service.JWTService           = service.NewJWTService()
+	accountRepository repository.AccountRepository = repository.NewAccountRepository(db)
+	authService       service.AuthService          = service.NewAuthService(accountRepository, jwtService)
 )
 
 func CORSMiddleware() gin.HandlerFunc {
@@ -38,6 +44,8 @@ func InitializeRoutes() {
 	r := gin.Default()
 	r.MaxMultipartMemory = 8 << 20
 	r.Use(CORSMiddleware())
+
+	api.AuthRoutes(r.Group("/api"), db, jwtService)
 
 	port := os.Getenv("APP_PORT")
 	if port == "" {
