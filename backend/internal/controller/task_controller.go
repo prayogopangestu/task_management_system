@@ -22,14 +22,21 @@ func NewTaskController(taskService service.TaskService) *TaskController {
 
 func (c *TaskController) All(ctx *gin.Context) {
 	var req dto.TaskListRequest
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		helper.JSONError(ctx, http.StatusBadRequest, "Invalid request", err.Error())
+		return
+	}
 
-	req.Search = helper.GetQueryString(ctx, "search")
-	req.Status = helper.GetQueryString(ctx, "status")
-	req.StartDate = helper.GetQueryString(ctx, "start_date")
-	req.EndDate = helper.GetQueryString(ctx, "end_date")
-	req.Limit = helper.GetQueryStringDefault(ctx, "limit", "10")
-	req.Page = helper.GetQueryStringDefault(ctx, "page", "1")
-	req.Order = helper.GetQueryStringDefault(ctx, "order", "id desc")
+	// Set default values if not provided
+	if req.Limit == "" {
+		req.Limit = "10"
+	}
+	if req.Page == "" {
+		req.Page = "1"
+	}
+	if req.Order == "" {
+		req.Order = "id desc"
+	}
 
 	tasks, count, err := c.taskService.GetAllTasks(ctx.Request.Context(), req)
 	if err != nil {
@@ -88,6 +95,24 @@ func (c *TaskController) FindByID(ctx *gin.Context) {
 	}
 
 	ctx.JSON(http.StatusOK, task)
+}
+
+func (c *TaskController) FindByFilter(ctx *gin.Context) {
+	var req dto.TaskFilterRequest
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		helper.JSONError(ctx, http.StatusBadRequest, "Invalid request", err.Error())
+		return
+	}
+
+	tasks, err := c.taskService.GetTasksByFilter(ctx.Request.Context(), req)
+	if err != nil {
+		helper.JSONError(ctx, http.StatusInternalServerError, "Failed to get tasks", err.Error())
+		return
+	}
+
+	ctx.JSON(http.StatusOK, gin.H{
+		"data": tasks,
+	})
 }
 
 func (c *TaskController) Update(ctx *gin.Context) {

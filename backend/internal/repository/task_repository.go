@@ -16,6 +16,7 @@ type TaskRepository interface {
 	GetByID(ctx context.Context, id uint) (*models.Task, error)
 	Update(ctx context.Context, task *models.Task) error
 	Delete(ctx context.Context, id uint) error
+	GetByFilter(ctx context.Context, req dto.TaskFilterRequest) ([]models.Task, error)
 }
 
 type taskRepository struct {
@@ -104,5 +105,29 @@ func (r *taskRepository) GetByStatus(ctx context.Context, status string) ([]mode
 		Preload("Account").
 		Where("status = ?", status).
 		Find(&tasks).Error
+	return tasks, err
+}
+
+func (r *taskRepository) GetByFilter(ctx context.Context, req dto.TaskFilterRequest) ([]models.Task, error) {
+	var tasks []models.Task
+
+	queryBuilder := r.db.WithContext(ctx).
+		Preload("CreateUser").
+		Preload("UpdateUser").
+		Preload("Account")
+
+	if req.Status != nil {
+		queryBuilder = queryBuilder.Where("status = ?", *req.Status)
+	}
+
+	if req.StartDate != nil && req.EndDate != nil {
+		queryBuilder = queryBuilder.Where("deadline >= ? AND deadline <= ?", *req.StartDate, *req.EndDate)
+	} else if req.StartDate != nil {
+		queryBuilder = queryBuilder.Where("deadline >= ?", *req.StartDate)
+	} else if req.EndDate != nil {
+		queryBuilder = queryBuilder.Where("deadline <= ?", *req.EndDate)
+	}
+
+	err := queryBuilder.Find(&tasks).Error
 	return tasks, err
 }

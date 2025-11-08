@@ -15,6 +15,7 @@ type TaskService interface {
 	GetTaskByID(ctx context.Context, id uint) (*dto.TaskResponse, error)
 	UpdateTask(ctx context.Context, id uint, req dto.UpdateTaskRequest, userID uint) (*dto.TaskResponse, error)
 	DeleteTask(ctx context.Context, id uint) error
+	GetTasksByFilter(ctx context.Context, req dto.TaskFilterRequest) ([]dto.TaskResponse, error)
 }
 
 type taskService struct {
@@ -140,4 +141,18 @@ func (s *taskService) toTaskResponse(task *models.Task) *dto.TaskResponse {
 		Status:          task.Status,
 		Deadline:        task.Deadline,
 	}
+}
+
+func (s *taskService) GetTasksByFilter(ctx context.Context, req dto.TaskFilterRequest) ([]dto.TaskResponse, error) {
+	tasks, err := s.taskRepo.GetByFilter(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+
+	responses := make([]dto.TaskResponse, len(tasks))
+	for i, task := range tasks {
+		responses[i] = *s.toTaskResponse(&task)
+	}
+
+	return responses, nil
 }

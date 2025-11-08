@@ -43,3 +43,8 @@ type TaskResponse struct {
 	Status          string          `json:"status"`
 	Deadline        time.Time       `json:"deadline"`
 }
+type TaskFilterRequest struct {
+	Status    *string    `json:"status"`
+	StartDate *time.Time `json:"start_date"`
+	EndDate   *time.Time `json:"end_date"`
+}
