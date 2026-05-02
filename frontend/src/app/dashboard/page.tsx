@@ -2,44 +2,12 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import axios, { AxiosError } from "axios";
 import Swal from "sweetalert2";
 import { debounce } from "lodash";
 import { jwtDecode } from "jwt-decode";
-import { baseUrl } from "@/helper/api";
-
-interface Account {
-  id: number;
-  name: string;
-  email: string;
-  is_active: boolean;
-  last_login: string;
-  created_at: string;
-  updated_at: string;
-}
-
-interface Task {
-  id: number;
-  title: string;
-  description: string;
-  status: "todo" | "in_progress" | "done";
-  deadline: string;
-  created_at: string;
-  updated_at: string;
-  accounts_id: number;
-  accounts: Account;
-  create_accounts_id: number;
-  create_accounts: Account;
-  update_accounts_id: number | null;
-  update_accounts: Account | null;
-}
-
-interface ApiResponse {
-  data: Task[];
-  limit: string;
-  page: string;
-  total: number;
-}
+import { useAuth } from "@/hooks/useAuth";
+import { useTask } from "@/hooks/useTask";
+import { Task, CreateTaskRequest, UpdateTaskRequest, TaskFilterRequest } from "@/types";
 
 interface JwtPayload {
   user_id: number;
@@ -48,9 +16,23 @@ interface JwtPayload {
 
 export default function Dashboard() {
   const router = useRouter();
+  const { user, isAuthenticated, logout } = useAuth();
+  const {
+    tasks,
+    isLoading,
+    error,
+    total: totalTasks,
+    page,
+    limit,
+    getTasks,
+    createTask,
+    updateTask,
+    deleteTask,
+    filterTasks,
+    clearTaskError,
+  } = useTask();
 
-  // State
-  const [tasks, setTasks] = useState<Task[]>([]);
+  // Form state
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [status, setStatus] = useState<"todo" | "in_progress" | "done">("todo");
@@ -60,20 +42,65 @@ export default function Dashboard() {
   >("");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
-  const [page, setPage] = useState(1);
+  const [currentPage, setCurrentPage] = useState(1);
   const [editId, setEditId] = useState<number | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [totalTasks, setTotalTasks] = useState(0);
 
   const pageSize = 5;
 
-  // Check token on component mount
+  // Check authentication on mount
   useEffect(() => {
-    const token = localStorage.getItem("token");
-    if (!token) {
+    if (!isAuthenticated && !isLoading) {
       router.push("/login");
     }
-  }, [router]);
+  }, [isAuthenticated, isLoading, router]);
+
+  // Load tasks on mount and page change
+  useEffect(() => {
+    if (isAuthenticated) {
+      getTasks(currentPage, pageSize);
+    }
+  }, [currentPage, isAuthenticated, getTasks]);
+
+  // Debounced filter
+  const triggerFetch = useCallback(
+    debounce(async () => {
+      setCurrentPage(1);
+      if (filterStatus || startDate || endDate) {
+        const filterPayload: TaskFilterRequest = {};
+
+        if (filterStatus) {
+          filterPayload.status = filterStatus;
+        }
+
+        if (startDate) {
+          filterPayload.start_date = new Date(`${startDate}T00:00:00Z`);
+        } else {
+          const oneYearAgo = new Date();
+          oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+          filterPayload.start_date = oneYearAgo;
+        }
+
+        if (endDate) {
+          filterPayload.end_date = new Date(`${endDate}T23:59:59Z`);
+        } else {
+          const oneYearLater = new Date();
+          oneYearLater.setFullYear(oneYearLater.getFullYear() + 1);
+          filterPayload.end_date = oneYearLater;
+        }
+
+        await filterTasks(filterPayload);
+      } else {
+        await getTasks(1, pageSize);
+      }
+    }, 400),
+    [filterStatus, startDate, endDate, filterTasks, getTasks]
+  );
+
+  // Trigger fetch on filter change
+  useEffect(() => {
+    triggerFetch();
+    return () => triggerFetch.cancel();
+  }, [filterStatus, startDate, endDate, triggerFetch]);
 
   // Reset form
   const resetForm = () => {
@@ -89,137 +116,13 @@ export default function Dashboard() {
     setFilterStatus("");
     setStartDate("");
     setEndDate("");
-    setPage(1);
+    setCurrentPage(1);
+    getTasks(1, pageSize);
   };
 
-  // Debounced filter
-  const triggerFetch = useCallback(
-    debounce(() => {
-      setPage(1);
-      fetchTasks();
-    }, 400),
-    [filterStatus, startDate, endDate]
-  );
-
-  // FETCH TASKS → POST to /api/task/byfilter
-  const fetchTasks = async () => {
-    const token = localStorage.getItem("token");
-    if (!token) {
-      router.push("/login");
-      return;
-    }
-
-    setLoading(true);
-
-    try {
-      const url = `${baseUrl}/byfilter`;
-      console.log("🔍 Fetching from backend with filter:", url);
-
-      // Prepare filter payload
-      const filterPayload: any = {};
-
-      if (filterStatus) {
-        filterPayload.status = filterStatus;
-      }
-
-      // Set default dates if not provided
-      if (startDate) {
-        filterPayload.start_date = `${startDate}T00:00:00Z`;
-      } else {
-        // Default start date: 1 year ago
-        const oneYearAgo = new Date();
-        oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
-        filterPayload.start_date =
-          oneYearAgo.toISOString().split("T")[0] + "T00:00:00Z";
-      }
-
-      if (endDate) {
-        filterPayload.end_date = `${endDate}T23:59:59Z`;
-      } else {
-        // Default end date: 1 year from now
-        const oneYearLater = new Date();
-        oneYearLater.setFullYear(oneYearLater.getFullYear() + 1);
-        filterPayload.end_date =
-          oneYearLater.toISOString().split("T")[0] + "T23:59:59Z";
-      }
-
-      console.log("📋 Filter payload:", filterPayload);
-
-      const response = await fetch(url, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(filterPayload),
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error("Backend error:", errorText);
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const data = await response.json();
-
-      if (data && Array.isArray(data.data)) {
-        setTasks(data.data);
-        setTotalTasks(data.total || 0);
-      } else {
-        console.warn("Unexpected response structure:", data);
-        setTasks([]);
-        setTotalTasks(0);
-      }
-    } catch (error) {
-      console.error(" Fetch error:", error);
-
-      if (
-        error instanceof TypeError &&
-        error.message.includes("Failed to fetch")
-      ) {
-        Swal.fire({
-          title: "Koneksi Gagal",
-          text: "Tidak dapat terhubung ke server backend. Pastikan server berjalan di http://localhost:8080",
-          icon: "error",
-          background: "#ffffff",
-          color: "#000000",
-        });
-      } else {
-        Swal.fire({
-          title: "Error",
-          text: "Gagal memuat data tugas",
-          icon: "error",
-          background: "#ffffff",
-          color: "#000000",
-        });
-      }
-
-      setTasks([]);
-      setTotalTasks(0);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Trigger fetch on page change
-  useEffect(() => {
-    fetchTasks();
-  }, [page]);
-
-  // Trigger fetch on filter change
-  useEffect(() => {
-    triggerFetch();
-    return () => triggerFetch.cancel();
-  }, [filterStatus, startDate, endDate, triggerFetch]);
-
-  // CRUD Operations
+  // Handle submit
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const token = localStorage.getItem("token");
-    if (!token) {
-      router.push("/login");
-      return;
-    }
 
     if (!title.trim() || !description.trim()) {
       Swal.fire({
@@ -232,22 +135,24 @@ export default function Dashboard() {
       return;
     }
 
-    // Get account_id from JWT token
+    const token = localStorage.getItem("token");
+    if (!token) {
+      router.push("/login");
+      return;
+    }
+
     const decoded: JwtPayload = jwtDecode(token);
     const accountId = Number(decoded.user_id);
-
-    // Set default deadline if not provided
     const taskDeadline = deadline ? `${deadline}:00Z` : "2025-12-31T23:59:59Z";
 
     try {
       if (editId) {
-        await axios.put(
-          `${baseUrl}/${editId}`,
-          { title, description, status },
-          {
-            headers: { Authorization: `Bearer ${token}` },
-          }
-        );
+        const updateData: UpdateTaskRequest = {
+          title,
+          description,
+          status,
+        };
+        await updateTask(editId, updateData);
         Swal.fire({
           title: "Sukses!",
           text: "Tugas diperbarui",
@@ -256,19 +161,14 @@ export default function Dashboard() {
           color: "#000000",
         });
       } else {
-        await axios.post(
-          baseUrl,
-          {
-            title,
-            description,
-            status,
-            deadline: taskDeadline,
-            account_id: accountId,
-          },
-          {
-            headers: { Authorization: `Bearer ${token}` },
-          }
-        );
+        const createData: CreateTaskRequest = {
+          title,
+          description,
+          status,
+          deadline: taskDeadline,
+          account_id: accountId,
+        };
+        await createTask(createData);
         Swal.fire({
           title: "Sukses!",
           text: "Tugas ditambahkan",
@@ -278,12 +178,11 @@ export default function Dashboard() {
         });
       }
       resetForm();
-      fetchTasks();
+      getTasks(currentPage, pageSize);
     } catch (err) {
-      const error = err as AxiosError<{ message: string }>;
       Swal.fire({
         title: "Gagal",
-        text: error.response?.data?.message || "Operasi gagal",
+        text: error || "Operasi gagal",
         icon: "error",
         background: "#ffffff",
         color: "#000000",
@@ -291,6 +190,7 @@ export default function Dashboard() {
     }
   };
 
+  // Handle delete
   const handleDelete = async (id: number) => {
     const { isConfirmed } = await Swal.fire({
       title: "Hapus?",
@@ -307,26 +207,8 @@ export default function Dashboard() {
 
     if (!isConfirmed) return;
 
-    const token = localStorage.getItem("token");
-    if (!token) {
-      router.push("/login");
-      return;
-    }
-
     try {
-      // Pastikan ID valid sebelum mengirim request
-      if (!id || isNaN(id)) {
-        throw new Error("ID tugas tidak valid");
-      }
-
-      console.log("🗑️ Menghapus task dengan ID:", id); // Debug log
-
-      const response = await axios.delete(`${baseUrl}/${id}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
-      console.log("Response delete:", response); // Debug log
-
+      await deleteTask(id);
       Swal.fire({
         title: "Dihapus!",
         text: "Tugas berhasil dihapus",
@@ -334,14 +216,11 @@ export default function Dashboard() {
         background: "#ffffff",
         color: "#000000",
       });
-      fetchTasks();
+      getTasks(currentPage, pageSize);
     } catch (err) {
-      console.error("❌ Delete error:", err); // Debug log
-
-      const error = err as AxiosError<{ message: string }>;
       Swal.fire({
         title: "Gagal",
-        text: error.response?.data?.message || "Tidak bisa menghapus tugas",
+        text: error || "Tidak bisa menghapus tugas",
         icon: "error",
         background: "#ffffff",
         color: "#000000",
@@ -349,6 +228,7 @@ export default function Dashboard() {
     }
   };
 
+  // Handle edit
   const handleEdit = (task: Task) => {
     setTitle(task.title);
     setDescription(task.description);
@@ -357,14 +237,14 @@ export default function Dashboard() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
+  // Handle logout
   const handleLogout = () => {
-    localStorage.removeItem("token");
-    router.push("/login");
+    logout();
   };
 
   // Calculate pagination
   const totalPages = Math.ceil(totalTasks / pageSize);
-  const hasNextPage = page < totalPages;
+  const hasNextPage = currentPage < totalPages;
 
   return (
     <div className="min-h-screen bg-white p-4 md:p-6">
@@ -470,7 +350,7 @@ export default function Dashboard() {
             <div className="flex justify-end">
               <button
                 type="submit"
-                disabled={loading}
+                disabled={isLoading}
                 className="px-8 py-3 bg-black text-white rounded-lg hover:bg-gray-800 transition-all duration-300 font-bold shadow-md hover:shadow-lg transform hover:-translate-y-0.5 disabled:opacity-50 disabled:transform-none disabled:shadow-none"
               >
                 {editId ? "Update Task" : "Tambah Task"}
@@ -544,7 +424,7 @@ export default function Dashboard() {
 
         {/* Tasks Table */}
         <div className="bg-white rounded-lg border border-gray-300 overflow-hidden">
-          {loading ? (
+          {isLoading ? (
             <div className="p-12 text-center">
               <div className="inline-flex items-center justify-center">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-black"></div>
@@ -654,13 +534,7 @@ export default function Dashboard() {
                                 Edit
                               </button>
                               <button
-                                onClick={() => {
-                                  console.log(
-                                    "Tombol delete diklik, ID:",
-                                    task.id
-                                  ); // Debug log
-                                  handleDelete(task.id);
-                                }}
+                                onClick={() => handleDelete(task.id)}
                                 className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-all duration-200 transform hover:scale-105 font-medium"
                               >
                                 Hapus
@@ -684,17 +558,17 @@ export default function Dashboard() {
                   </div>
                   <div className="flex items-center space-x-3">
                     <button
-                      onClick={() => setPage((p) => Math.max(1, p - 1))}
-                      disabled={page === 1}
+                      onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                      disabled={currentPage === 1}
                       className="px-4 py-2 border border-gray-400 rounded-lg hover:bg-white disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium text-black"
                     >
                       ← Sebelumnya
                     </button>
                     <span className="px-4 py-2 font-bold text-black">
-                      Halaman {page} dari {totalPages}
+                      Halaman {currentPage} dari {totalPages}
                     </span>
                     <button
-                      onClick={() => setPage((p) => p + 1)}
+                      onClick={() => setCurrentPage((p) => p + 1)}
                       disabled={!hasNextPage}
                       className="px-4 py-2 border border-gray-400 rounded-lg hover:bg-white disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium text-black"
                     >

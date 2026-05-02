@@ -111,7 +111,8 @@ func (c *TaskController) FindByFilter(ctx *gin.Context) {
 	}
 
 	ctx.JSON(http.StatusOK, gin.H{
-		"data": tasks,
+		"data":  tasks,
+		"total": len(tasks),
 	})
 }
 

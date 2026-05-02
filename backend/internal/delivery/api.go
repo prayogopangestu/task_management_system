@@ -45,12 +45,13 @@ func InitializeRoutes() {
 	r.MaxMultipartMemory = 8 << 20
 	r.Use(CORSMiddleware())
 
+	// Initialize routes
 	api.AuthRoutes(r.Group("/api"), db, jwtService)
 	api.TaskRoutes(r.Group("/api"), db, jwtService)
 
 	port := os.Getenv("APP_PORT")
 	if port == "" {
-		port = "5000"
+		port = "8080"
 	}
 	r.Run(":" + port)
 }

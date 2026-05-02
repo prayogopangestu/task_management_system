@@ -1,47 +1,20 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
-import axios from "axios";
-import { authUrl } from "@/helper/api";
+import { useAuth } from "@/hooks/useAuth";
 
 export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
-  const router = useRouter();
+  const { login, isLoading, error } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
-    setError("");
 
     try {
-      const response = await axios.post(
-        `${authUrl}/login`, // Gunakan backend langsung
-        { email, password }
-      );
-
-      console.log("Login Response:", response.data);
-
-      if (
-        response.data.success &&
-        response.data.data &&
-        response.data.data.access_token
-      ) {
-        const token = response.data.data.access_token;
-        localStorage.setItem("token", token);
-        console.log("Token saved:", token.substring(0, 20) + "...");
-        router.push("/dashboard");
-      } else {
-        setError("Login gagal - token tidak diterima");
-      }
+      await login(email, password);
     } catch (err: any) {
       console.error("Login error:", err);
-      setError(err.response?.data?.message || "Invalid credentials");
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -88,7 +61,7 @@ export default function Login() {
                   placeholder="Enter your email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  disabled={loading}
+                  disabled={isLoading}
                 />
                 <svg
                   className="absolute right-3 top-3.5 h-5 w-5 text-gray-400"
@@ -122,7 +95,7 @@ export default function Login() {
                   placeholder="Enter your password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  disabled={loading}
+                  disabled={isLoading}
                 />
                 <svg
                   className="absolute right-3 top-3.5 h-5 w-5 text-gray-400"
@@ -148,10 +121,10 @@ export default function Login() {
           <div>
             <button
               type="submit"
-              disabled={loading}
+              disabled={isLoading}
               className="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-semibold rounded-lg text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition duration-200 ease-in-out transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {loading ? "Signing In..." : "Sign In"}
+              {isLoading ? "Signing In..." : "Sign In"}
             </button>
           </div>
           <div className="text-center">

@@ -1,76 +1,254 @@
-Task Management System
+# Task Management System
 
 A full-stack task management application built with Go, TypeScript, and PostgreSQL.
 
-Features
+## ✨ Features
 
-User registration and login
+- ✅ User registration and login with JWT authentication
+- ✅ Create, edit, delete tasks
+- ✅ Task assignment and status tracking (To Do, In Progress, Done)
+- ✅ Filter tasks by status and date range
+- ✅ Pagination support
+- ✅ Responsive web interface
+- ✅ REST API backend
+- ✅ Real-time form validation
 
-Create, edit, delete tasks
+## 🏗️ Tech Stack
 
-Task assignment and status tracking
+### Backend
+- **Language**: Go 1.21+
+- **Framework**: Gin Web Framework
+- **ORM**: GORM
+- **Database**: PostgreSQL
+- **Authentication**: JWT (JSON Web Token)
+- **API**: REST API
 
-REST API backend and web frontend
+### Frontend
+- **Framework**: Next.js 16.0.1
+- **Language**: TypeScript 5
+- **UI Library**: React 19.2.0
+- **Styling**: Tailwind CSS 4
+- **HTTP Client**: Axios
+- **Alerts**: SweetAlert2
+- **State Management**: React Hooks
 
-Database schema provided
+### Database
+- **DBMS**: PostgreSQL 12+
+- **Schema**: Pre-defined with migrations
 
-Tech Stack
+## 📁 Folder Structure
 
-Backend: Go (primary language)
+```
+task-management/
+├── backend/                 # Go REST API
+│   ├── cmd/app/            # Application entry point
+│   ├── config/             # Database configuration
+│   ├── internal/
+│   │   ├── controller/     # Request handlers
+│   │   ├── delivery/       # Route definitions
+│   │   ├── dto/            # Data transfer objects
+│   │   ├── helper/         # Utility functions
+│   │   ├── middleware/     # CORS, Auth, Logger
+│   │   ├── models/         # Database models
+│   │   ├── repository/     # Data access layer
+│   │   ├── service/        # Business logic
+│   │   └── utils/          # Crypto, UUID utilities
+│   ├── .env.example        # Environment template
+│   └── go.mod              # Go dependencies
+│
+├── frontend/               # Next.js web app
+│   ├── src/
+│   │   ├── app/
+│   │   │   ├── api/        # API routes
+│   │   │   ├── dashboard/  # Main dashboard
+│   │   │   ├── login/      # Login page
+│   │   │   └── layout.tsx  # Root layout
+│   │   └── helper/         # API configuration
+│   ├── .env.example        # Environment template
+│   ├── .env.local          # Local environment
+│   ├── package.json        # Node dependencies
+│   └── tsconfig.json       # TypeScript config
+│
+├── db.sql                  # Database schema
+├── SETUP.md                # Detailed setup guide
+├── run-backend.sh          # Backend startup script (Linux/Mac)
+├── run-backend.bat         # Backend startup script (Windows)
+├── run-frontend.sh         # Frontend startup script (Linux/Mac)
+├── run-frontend.bat        # Frontend startup script (Windows)
+└── README.md               # This file
+```
 
-Database: PostgreSQL (SQL schema included)
+## 🚀 Quick Start
 
-Frontend: TypeScript (likely with a modern framework)
+### Prerequisites
 
-API Testing: Postman collection included
+- Go 1.21+
+- Node.js 18+
+- PostgreSQL 12+
 
-Folder Structure
-/backend        → Go REST API  
-/frontend       → TypeScript web app  
-/db.sql         → Database schema and initial setup  
-/task-management.postman_collection.json → API collection for Postman  
-/screenshorts   → Screenshots of the application  
+### 1. Database Setup
 
+```bash
+# Create database
+createdb task_management
 
-(Note: “screenshorts” appears to be a typo for “screenshots” — you may rename it.)
+# Import schema
+psql -U postgres -d task_management -f db.sql
+```
 
-Getting Started
-Prerequisites
+### 2. Backend Setup
 
-Go installed (version 1.XX or higher)
+```bash
+# Linux/Mac
+./run-backend.sh
 
-Node.js + npm or yarn for frontend
+# Windows
+run-backend.bat
+```
 
-PostgreSQL database
+Backend runs on `http://localhost:8080`
 
-Setup Instructions
+### 3. Frontend Setup
 
-Create a PostgreSQL database.
+In a new terminal:
 
-Run the SQL script db.sql to set up tables and initial data.
+```bash
+# Linux/Mac
+./run-frontend.sh
 
-In /backend, configure the database connection (e.g., via environment variables).
+# Windows
+run-frontend.bat
+```
 
-In /backend, run go run . (or build and run) to start the API server.
+Frontend runs on `http://localhost:3000`
 
-In /frontend, install dependencies with npm install or yarn install.
+### 4. Login
 
-Run the frontend with npm start or yarn start.
+Use one of the pre-configured accounts:
+- Email: `yoga@company.com`
+- Email: `yogaanjay@company.com`
+- Email: `test@example.com`
 
-Open the web app in your browser (usually http://localhost:3000).
+## 📖 Detailed Setup
 
-Use the Postman collection file in task-management.postman_collection.json to test API endpoints.
+For detailed setup instructions, see [SETUP.md](./SETUP.md)
 
-Usage
+## 🔌 API Endpoints
 
-Register a new user or log in with existing credentials.
+### Authentication
+- `POST /api/auth/login` - Login user
+- `POST /api/auth/register` - Register new user
+- `GET /api/auth/profile` - Get user profile (protected)
+- `POST /api/auth/change-password` - Change password (protected)
 
-Create tasks, set deadlines, assign to users.
+### Tasks
+- `GET /api/task/list` - Get all tasks (paginated)
+- `POST /api/task` - Create new task
+- `GET /api/task/{id}` - Get task by ID
+- `PUT /api/task/{id}` - Update task
+- `DELETE /api/task/{id}` - Delete task
+- `POST /api/task/byfilter` - Filter tasks by status and date
 
-Update task status (e.g., “To Do”, “In Progress”, “Done”).
+## 🧪 Testing with Postman
 
-Delete tasks when completed or no longer relevant.
+1. Import `task-management.postman_collection.json` into Postman
+2. Set `{{base_url}}` to `http://localhost:8080`
+3. Test all endpoints
 
-Screenshots
+## 🔐 Security Features
 
-You’ll find sample screenshots in the /screenshorts directory showing key views: task list, task detail, user profile, etc.
+- ✅ JWT-based authentication
+- ✅ Password hashing with crypto
+- ✅ CORS protection
+- ✅ Email uniqueness validation
+- ✅ Account activation/deactivation
+- ✅ Last login tracking
+
+## 📊 Database Schema
+
+### accounts table
+- `id` - Primary key
+- `name` - User name
+- `email` - Unique email
+- `password` - Hashed password
+- `is_active` - Account status
+- `last_login` - Last login timestamp
+- `created_at` - Creation timestamp
+- `updated_at` - Update timestamp
+
+### Tasks table
+- `id` - Primary key
+- `create_accounts_id` - Creator user ID (FK)
+- `update_accounts_id` - Last updater user ID (FK)
+- `accounts_id` - Task owner user ID (FK)
+- `title` - Task title
+- `description` - Task description
+- `status` - Task status (todo, in_progress, done)
+- `deadline` - Task deadline
+
+## 🐛 Troubleshooting
+
+### Backend Connection Error
+```
+Cannot connect to postgres database
+```
+**Solution**: Check `.env` file and ensure PostgreSQL is running
+
+### Frontend Connection Error
+```
+Koneksi Gagal - Tidak dapat terhubung ke server backend
+```
+**Solution**: Ensure backend is running on `http://localhost:8080`
+
+### Port Already in Use
+**Solution**: Change port in `.env` or kill the process using the port
+
+## 📚 Additional Resources
+
+- [Go Documentation](https://golang.org/doc/)
+- [Next.js Documentation](https://nextjs.org/docs)
+- [PostgreSQL Documentation](https://www.postgresql.org/docs/)
+- [Gin Web Framework](https://gin-gonic.com/)
+- [GORM Documentation](https://gorm.io/)
+
+## 📝 Environment Variables
+
+### Backend (.env)
+```env
+DB_DRIVER=postgres
+DB_USER=postgres
+DB_PASSWORD=your_password
+DB_HOST=localhost
+DB_PORT=5432
+DB_NAME=task_management
+APP_PORT=8080
+JWT_SECRET=your_secret_key
+```
+
+### Frontend (.env.local)
+```env
+NEXT_PUBLIC_BACKEND_URL=http://localhost:8080
+```
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Commit your changes
+4. Push to the branch
+5. Create a Pull Request
+
+## 📄 License
+
+This project is open source and available under the MIT License.
+
+## 📞 Support
+
+For issues and questions:
+1. Check the [SETUP.md](./SETUP.md) guide
+2. Review the API documentation in Postman
+3. Check application logs for errors
+
+---
+
+**Happy coding! 🎉**
